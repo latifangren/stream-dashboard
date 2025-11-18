@@ -64,11 +64,13 @@ crontab -e
 ```
 # Tambahkan baris berikut (cek setiap menit)
 # Untuk Termux/Alpine:
+```bash
 * * * * * cd ~/stream-dashboard && php run_schedule.php > /dev/null 2>&1
-
+```
 # Untuk VPS:
+```bash
 * * * * * cd /opt/stream-dashboard && php run_schedule.php > /dev/null 2>&1
-
+```
 
 **Platform yang Didukung:**
 - ✅ Termux (Android)
