@@ -294,12 +294,14 @@ Jika ingin setup manual via terminal:
 ```bash
 # Edit crontab
 crontab -e
-
+```
 # Tambahkan baris berikut (cek setiap menit)
 # Untuk Termux/Alpine:
-* * * * * cd ~/stream-dashboard && php run_schedule.php > /dev/null 2>&1
-
+```bash
+* * * * * PATH=$PATH:/usr/local/bin:/usr/bin:/bin && cd '/data/data/com.termux/files/home/stream-dashboard' && '/data/data/com.termux/files/usr/bin/php' run_schedule.php >> '/data/data/com.termux/files/home/stream-dashboard/cron_output.log' 2>&1
+```
 # Untuk VPS:
+```bash
 * * * * * cd /opt/stream-dashboard && php run_schedule.php > /dev/null 2>&1
 ```
 
@@ -439,7 +441,7 @@ rtmp://your-server.com:1935/live/stream_key
 
 ### 1. Login ke Dashboard
 
-1. Buka browser dan akses URL dashboard (contoh: `http://localhost:8080`)
+1. Buka browser dan akses URL dashboard (contoh: `http://localhost:3100`)
 2. Masukkan username dan password
 3. Klik **Login**
 
