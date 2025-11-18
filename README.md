@@ -34,7 +34,7 @@ chmod +x install.sh
 Cara menaikkan limit upload jika gagal upload
 
 Buat atau edit php.ini (karena sekarang belum ada yang aktif)
-
+```bash
 cp /data/data/com.termux/files/usr/etc/php/php.ini-development /data/data/com.termux/files/usr/etc/php/php.ini
 nano /data/data/com.termux/files/usr/etc/php/php.ini
 
@@ -53,6 +53,7 @@ php -r "echo 'upload_max_filesize: '.ini_get('upload_max_filesize').PHP_EOL; ech
 
 
 SETUP CRONJOB TERMUX
+```bash
 # Edit crontab
 crontab -e
 
