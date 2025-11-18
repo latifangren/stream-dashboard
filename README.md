@@ -36,6 +36,9 @@ Cara menaikkan limit upload jika gagal upload
 Buat atau edit php.ini (karena sekarang belum ada yang aktif)
 ```bash
 cp /data/data/com.termux/files/usr/etc/php/php.ini-development /data/data/com.termux/files/usr/etc/php/php.ini
+
+#atau manual
+mkdir /data/data/com.termux/files/usr/etc/php
 nano /data/data/com.termux/files/usr/etc/php/php.ini
 ```
 letak config php.ini kadang berbeda silahkan cari sendiri/tanya ai
