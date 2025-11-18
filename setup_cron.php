@@ -50,12 +50,140 @@ if (!file_exists($scriptPath)) {
     exit;
 }
 
-// Cek apakah crontab sudah ada
-$crontab = shell_exec("crontab -l 2>/dev/null");
+// Fungsi untuk deteksi platform
+function detectPlatform() {
+    $osId = '';
+    if (file_exists('/etc/os-release')) {
+        $content = file_get_contents('/etc/os-release');
+        if (preg_match('/^ID=(.+)$/m', $content, $matches)) {
+            $osId = strtolower(trim($matches[1], '"\''));
+        }
+    }
+    
+    if (strpos($osId, 'android') !== false || file_exists('/data/data/com.termux')) {
+        return 'termux';
+    } elseif (strpos($osId, 'alpine') !== false) {
+        return 'alpine';
+    } elseif (in_array($osId, ['debian', 'ubuntu'])) {
+        return 'vps';
+    }
+    
+    return 'unknown';
+}
+
+// Fungsi untuk cek apakah crontab tersedia
+function isCrontabAvailable() {
+    $output = shell_exec("which crontab 2>/dev/null");
+    return !empty(trim($output));
+}
+
+// Fungsi untuk install cron
+function installCron($platform) {
+    $output = [];
+    $return = 0;
+    
+    switch ($platform) {
+        case 'termux':
+            // Install cronie untuk Termux
+            exec("pkg install -y cronie 2>&1", $output, $return);
+            if ($return === 0) {
+                // Start cronie service
+                exec("sv-enable crond 2>&1", $output2, $return2);
+                exec("sv start crond 2>&1", $output3, $return3);
+                return ['success' => true, 'message' => 'cronie berhasil diinstall dan diaktifkan'];
+            }
+            break;
+            
+        case 'alpine':
+            // Install dcron untuk Alpine
+            exec("apk add --no-cache dcron 2>&1", $output, $return);
+            if ($return === 0) {
+                // Start crond service
+                exec("rc-service crond start 2>&1", $output2, $return2);
+                exec("rc-update add crond 2>&1", $output3, $return3);
+                return ['success' => true, 'message' => 'dcron berhasil diinstall dan diaktifkan'];
+            }
+            break;
+            
+        case 'vps':
+            // Untuk VPS, coba install dengan sudo jika diperlukan
+            // Biasanya cron sudah terinstall di VPS
+            $cmd = "command -v apt-get >/dev/null 2>&1 && (sudo apt-get update && sudo apt-get install -y cron) 2>&1 || (command -v yum >/dev/null 2>&1 && sudo yum install -y cronie) 2>&1";
+            exec($cmd, $output, $return);
+            if ($return === 0) {
+                // Start cron service
+                exec("sudo systemctl enable cron 2>&1 || sudo systemctl enable crond 2>&1", $output2, $return2);
+                exec("sudo systemctl start cron 2>&1 || sudo systemctl start crond 2>&1", $output3, $return3);
+                return ['success' => true, 'message' => 'cron berhasil diinstall dan diaktifkan'];
+            } else {
+                // Mungkin cron sudah terinstall, coba start service saja
+                exec("sudo systemctl start cron 2>&1 || sudo systemctl start crond 2>&1", $output4, $return4);
+                if ($return4 === 0) {
+                    return ['success' => true, 'message' => 'cron service berhasil diaktifkan (sudah terinstall)'];
+                }
+            }
+            break;
+            
+        default:
+            return ['success' => false, 'message' => 'Platform tidak dikenali'];
+    }
+    
+    return [
+        'success' => false,
+        'message' => 'Gagal install cron: ' . implode("\n", $output),
+        'output' => $output
+    ];
+}
+
+// Cek apakah crontab tersedia, jika tidak coba install
+$crontabAvailable = isCrontabAvailable();
+if (!$crontabAvailable) {
+    $platform = detectPlatform();
+    $result['platform_detected'] = $platform;
+    $result['cron_installing'] = true;
+    
+    if ($platform !== 'unknown') {
+        $installResult = installCron($platform);
+        if ($installResult['success']) {
+            // Tunggu sebentar untuk service start
+            sleep(2);
+            // Cek lagi apakah crontab sekarang tersedia
+            $crontabAvailable = isCrontabAvailable();
+            if ($crontabAvailable) {
+                $result['cron_installed'] = true;
+                $result['install_message'] = $installResult['message'];
+            } else {
+                $result['error'] = 'Cron berhasil diinstall tapi crontab masih tidak tersedia. Silakan restart terminal atau jalankan manual.';
+                $result['install_message'] = $installResult['message'];
+                echo json_encode($result, JSON_PRETTY_PRINT);
+                exit;
+            }
+        } else {
+            $result['error'] = $installResult['message'];
+            $result['install_failed'] = true;
+            // Tetap lanjutkan, mungkin cron sudah ada tapi tidak di PATH
+        }
+    } else {
+        $result['error'] = 'Platform tidak dikenali. Silakan install cron manual.';
+        $result['install_failed'] = true;
+    }
+}
+
+// Cek apakah crontab sudah ada (setelah install jika perlu)
+$crontab = shell_exec("crontab -l 2>&1");
+$crontabError = false;
+// "no crontab" adalah normal jika belum ada crontab, bukan error
+if ($crontab === null || (stripos($crontab, 'error') !== false && stripos($crontab, 'no crontab') === false)) {
+    $crontabError = true;
+    $crontab = '';
+} elseif (stripos($crontab, 'no crontab') !== false) {
+    // Tidak ada crontab, tapi ini normal (belum ada jadwal)
+    $crontab = '';
+}
 $cronFound = false;
 $cronLines = [];
 
-if ($crontab) {
+if ($crontab && !$crontabError) {
     $lines = explode("\n", $crontab);
     foreach ($lines as $line) {
         $trimmed = trim($line);
@@ -126,16 +254,37 @@ unlink($tempFile);
 
 if ($return === 0) {
     $result['success'] = true;
-    if ($needsUpdate) {
-        $result['message'] = 'Cron job berhasil diupdate dengan absolute path!';
-    } else {
-        $result['message'] = 'Cron job berhasil dipasang!';
+    $message = '';
+    if (isset($result['cron_installed'])) {
+        $message = 'Cron berhasil diinstall dan ';
     }
+    if ($needsUpdate) {
+        $message .= 'Cron job berhasil diupdate dengan absolute path!';
+    } else {
+        $message .= 'Cron job berhasil dipasang!';
+    }
+    $result['message'] = $message;
     $result['cron_line'] = trim($cronLine);
     $result['php_path'] = $phpPath;
     $result['script_dir'] = $scriptDir;
 } else {
-    $result['error'] = 'Gagal memasang cron job: ' . implode("\n", $output);
+    $errorMsg = 'Gagal memasang cron job: ' . implode("\n", $output);
+    if (!$crontabAvailable) {
+        $errorMsg .= "\n\nCron mungkin belum terinstall. Silakan install manual:\n";
+        $platform = detectPlatform();
+        switch ($platform) {
+            case 'termux':
+                $errorMsg .= "  pkg install -y cronie\n  sv-enable crond\n  sv start crond";
+                break;
+            case 'alpine':
+                $errorMsg .= "  apk add dcron\n  rc-service crond start";
+                break;
+            case 'vps':
+                $errorMsg .= "  apt-get install -y cron\n  systemctl start cron";
+                break;
+        }
+    }
+    $result['error'] = $errorMsg;
     $result['message'] = 'Silakan setup manual dengan menjalankan: php check_cron.php';
 }
 
