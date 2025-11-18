@@ -2,6 +2,11 @@
 
 Dashboard web berbasis PHP untuk mengelola streaming video live ke berbagai platform (YouTube, Facebook Live, Twitch, dan Custom RTMP) menggunakan FFmpeg. Aplikasi ini dirancang untuk berjalan di Termux (Android) atau Linux dengan kontrol penuh melalui antarmuka web yang modern dan responsif.
 
+TESTED di HP non root
+Google Pixel 5 A15 cr droid (GPU ENCODING WORK ) #bug network IO tidak terbaca #permision denied #SNAPDRAGON 765G
+SONY XZ2C A10 Stock Rom (GPU ENCODING WORK) #SNAPDRAGON 845
+Xiaomi Redmi note 5 ROM PostMarket OS Alphine linux base (GPU ENCODING ERROR (kernel issue)) #SNAPDRAGON 636
+
 ## 📋 Daftar Isi
 
 - [Quick Start](#-quick-start)
@@ -85,6 +90,7 @@ crontab -e
 * * * * * cd /opt/stream-dashboard && php run_schedule.php > /dev/null 2>&1
 ```
 SETUP FIX NETWORK DASHBOARD
+#di versi android tertentu/rom tertentu butuh akses root
 #termux
 ```bash
 pkg install iproute2
