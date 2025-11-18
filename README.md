@@ -84,6 +84,15 @@ crontab -e
 ```bash
 * * * * * cd /opt/stream-dashboard && php run_schedule.php > /dev/null 2>&1
 ```
+SETUP FIX NETWORK DASHBOARD
+#termux
+```bash
+pkg install iproute2
+```
+#check manual via termux
+```bash
+ip -s link
+```
 
 **Platform yang Didukung:**
 - ✅ Termux (Android)
