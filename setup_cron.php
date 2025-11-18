@@ -3,16 +3,62 @@
  * Endpoint untuk setup cron job secara otomatis via web
  */
 
-session_start();
-if (!isset($_SESSION['user'])) {
-    http_response_code(403);
-    header('Content-Type: application/json');
-    echo json_encode(['success' => false, 'error' => 'Unauthorized']);
+// Aktifkan output buffering untuk menangkap semua output/error
+ob_start();
+
+// Disable error display, kita akan handle sendiri
+ini_set('display_errors', 0);
+ini_set('log_errors', 0);
+error_reporting(E_ALL);
+
+// Set header JSON dulu
+header('Content-Type: application/json');
+
+// Function untuk output JSON dan exit
+function output_json($data) {
+    // Bersihkan semua output sebelumnya (termasuk warnings/errors)
+    while (ob_get_level() > 0) {
+        ob_end_clean();
+    }
+    ob_start();
+    echo json_encode($data, JSON_PRETTY_PRINT);
+    ob_end_flush();
     exit;
 }
 
-header('Content-Type: application/json');
-date_default_timezone_set("Asia/Jakarta");
+// Function untuk handle error
+function handle_error($message, $code = 500) {
+    http_response_code($code);
+    output_json([
+        'success' => false,
+        'error' => $message,
+        'message' => $message
+    ]);
+}
+
+// Custom error handler untuk menangkap semua PHP errors
+set_error_handler(function($errno, $errstr, $errfile, $errline) {
+    // Log error tapi jangan output langsung
+    error_log("PHP Error in setup_cron.php: [$errno] $errstr in $errfile:$errline");
+    // Return false untuk tetap menggunakan error handler default jika perlu
+    return false;
+}, E_ALL);
+
+// Custom exception handler
+set_exception_handler(function($exception) {
+    handle_error('Exception: ' . $exception->getMessage());
+});
+
+try {
+    session_start();
+    if (!isset($_SESSION['user'])) {
+        handle_error('Unauthorized', 403);
+    }
+
+    date_default_timezone_set("Asia/Jakarta");
+} catch (Exception $e) {
+    handle_error('Session error: ' . $e->getMessage());
+}
 
 $result = [
     'success' => false,
@@ -25,10 +71,10 @@ $scriptDir = __DIR__;
 
 // Cari PHP binary dengan absolute path
 $phpPath = PHP_BINARY;
-if (!file_exists($phpPath) || !is_executable($phpPath)) {
+if (!@file_exists($phpPath) || !@is_executable($phpPath)) {
     // Coba cari PHP di PATH
-    $phpFromPath = shell_exec("which php 2>/dev/null");
-    if ($phpFromPath) {
+    $phpFromPath = @shell_exec("which php 2>/dev/null");
+    if ($phpFromPath && trim($phpFromPath)) {
         $phpPath = trim($phpFromPath);
     } else {
         // Fallback ke php biasa (diharapkan ada di PATH)
@@ -37,44 +83,50 @@ if (!file_exists($phpPath) || !is_executable($phpPath)) {
 }
 
 // Pastikan menggunakan absolute path untuk PHP jika memungkinkan
-if (file_exists($phpPath) && is_executable($phpPath)) {
-    $phpPath = realpath($phpPath);
+if (@file_exists($phpPath) && @is_executable($phpPath)) {
+    $realPath = @realpath($phpPath);
+    if ($realPath) {
+        $phpPath = $realPath;
+    }
 }
 
 $currentUser = get_current_user();
 
 // Cek apakah script ada
-if (!file_exists($scriptPath)) {
+if (!@file_exists($scriptPath)) {
     $result['error'] = 'run_schedule.php tidak ditemukan';
-    echo json_encode($result);
-    exit;
+    output_json($result);
 }
 
 // Fungsi untuk deteksi platform
 function detectPlatform() {
-    $osId = '';
-    if (file_exists('/etc/os-release')) {
-        $content = file_get_contents('/etc/os-release');
-        if (preg_match('/^ID=(.+)$/m', $content, $matches)) {
-            $osId = strtolower(trim($matches[1], '"\''));
+    try {
+        $osId = '';
+        if (file_exists('/etc/os-release')) {
+            $content = @file_get_contents('/etc/os-release');
+            if ($content && preg_match('/^ID=(.+)$/m', $content, $matches)) {
+                $osId = strtolower(trim($matches[1], '"\''));
+            }
         }
+        
+        if (strpos($osId, 'android') !== false || file_exists('/data/data/com.termux')) {
+            return 'termux';
+        } elseif (strpos($osId, 'alpine') !== false) {
+            return 'alpine';
+        } elseif (in_array($osId, ['debian', 'ubuntu'])) {
+            return 'vps';
+        }
+        
+        return 'unknown';
+    } catch (Exception $e) {
+        return 'unknown';
     }
-    
-    if (strpos($osId, 'android') !== false || file_exists('/data/data/com.termux')) {
-        return 'termux';
-    } elseif (strpos($osId, 'alpine') !== false) {
-        return 'alpine';
-    } elseif (in_array($osId, ['debian', 'ubuntu'])) {
-        return 'vps';
-    }
-    
-    return 'unknown';
 }
 
 // Fungsi untuk cek apakah crontab tersedia
 function isCrontabAvailable() {
-    $output = shell_exec("which crontab 2>/dev/null");
-    return !empty(trim($output));
+    $output = @shell_exec("which crontab 2>/dev/null");
+    return !empty(trim($output ?: ''));
 }
 
 // Fungsi untuk install cron
@@ -155,8 +207,7 @@ if (!$crontabAvailable) {
             } else {
                 $result['error'] = 'Cron berhasil diinstall tapi crontab masih tidak tersedia. Silakan restart terminal atau jalankan manual.';
                 $result['install_message'] = $installResult['message'];
-                echo json_encode($result, JSON_PRETTY_PRINT);
-                exit;
+                output_json($result);
             }
         } else {
             $result['error'] = $installResult['message'];
@@ -170,10 +221,13 @@ if (!$crontabAvailable) {
 }
 
 // Cek apakah crontab sudah ada (setelah install jika perlu)
-$crontab = shell_exec("crontab -l 2>&1");
+$crontab = @shell_exec("crontab -l 2>&1");
 $crontabError = false;
 // "no crontab" adalah normal jika belum ada crontab, bukan error
-if ($crontab === null || (stripos($crontab, 'error') !== false && stripos($crontab, 'no crontab') === false)) {
+if ($crontab === null || $crontab === false) {
+    $crontabError = true;
+    $crontab = '';
+} elseif (stripos($crontab, 'error') !== false && stripos($crontab, 'no crontab') === false) {
     $crontabError = true;
     $crontab = '';
 } elseif (stripos($crontab, 'no crontab') !== false) {
@@ -209,8 +263,7 @@ if ($cronFound) {
 if ($cronFound && !$needsUpdate) {
     $result['success'] = true;
     $result['message'] = 'Cron job sudah terpasang dengan benar';
-    echo json_encode($result);
-    exit;
+    output_json($result);
 }
 
 // Setup/Update cron job dengan absolute path dan environment
@@ -218,9 +271,9 @@ if ($cronFound && !$needsUpdate) {
 $cronLine = "* * * * * PATH=\$PATH:/usr/local/bin:/usr/bin:/bin && cd " . escapeshellarg($scriptDir) . " && " . escapeshellarg($phpPath) . " run_schedule.php >> " . escapeshellarg($scriptDir . '/cron_output.log') . " 2>&1\n";
 
 // Backup crontab dulu
-$backup = shell_exec("crontab -l 2>/dev/null");
-if ($backup) {
-    file_put_contents(__DIR__ . '/crontab_backup.txt', $backup);
+$backup = @shell_exec("crontab -l 2>/dev/null");
+if ($backup && trim($backup) !== '') {
+    @file_put_contents(__DIR__ . '/crontab_backup.txt', $backup);
 }
 
 // Jika perlu update, hapus cron job lama dulu
@@ -247,10 +300,20 @@ if ($backup && trim($backup) !== '') {
     $newCrontab = $cronLine;
 }
 
-$tempFile = tempnam(sys_get_temp_dir(), 'crontab');
-file_put_contents($tempFile, $newCrontab);
-exec("crontab $tempFile 2>&1", $output, $return);
-unlink($tempFile);
+$tempFile = @tempnam(sys_get_temp_dir(), 'crontab');
+if (!$tempFile) {
+    $result['error'] = 'Gagal membuat temporary file untuk crontab';
+    output_json($result);
+}
+
+if (@file_put_contents($tempFile, $newCrontab) === false) {
+    @unlink($tempFile);
+    $result['error'] = 'Gagal menulis ke temporary file';
+    output_json($result);
+}
+
+@exec("crontab " . escapeshellarg($tempFile) . " 2>&1", $output, $return);
+@unlink($tempFile);
 
 if ($return === 0) {
     $result['success'] = true;
@@ -288,5 +351,6 @@ if ($return === 0) {
     $result['message'] = 'Silakan setup manual dengan menjalankan: php check_cron.php';
 }
 
-echo json_encode($result, JSON_PRETTY_PRINT);
+// Output hasil akhir
+output_json($result);
 
