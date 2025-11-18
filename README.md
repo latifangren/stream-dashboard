@@ -31,6 +31,38 @@ chmod +x install.sh
 # Via browser: http://[IP]:3100/add_user.php
 # Atau via CLI (lihat bagian Instalasi)
 ```
+Cara menaikkan limit upload jika gagal upload
+
+Buat atau edit php.ini (karena sekarang belum ada yang aktif)
+
+cp /data/data/com.termux/files/usr/etc/php/php.ini-development /data/data/com.termux/files/usr/etc/php/php.ini
+nano /data/data/com.termux/files/usr/etc/php/php.ini
+
+letak config php.ini kadang berbeda silahkan cari sendiri/tanya ai
+Ubah atau tambahkan baris ini:
+
+upload_max_filesize = 2G
+post_max_size = 2G
+memory_limit = 1G
+max_execution_time = 300
+
+
+Cek ulang limit:
+
+php -r "echo 'upload_max_filesize: '.ini_get('upload_max_filesize').PHP_EOL; echo 'post_max_size: '
+
+
+SETUP CRONJOB TERMUX
+# Edit crontab
+crontab -e
+
+# Tambahkan baris berikut (cek setiap menit)
+# Untuk Termux/Alpine:
+* * * * * cd ~/stream-dashboard && php run_schedule.php > /dev/null 2>&1
+
+# Untuk VPS:
+* * * * * cd /opt/stream-dashboard && php run_schedule.php > /dev/null 2>&1
+
 
 **Platform yang Didukung:**
 - ✅ Termux (Android)
