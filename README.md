@@ -63,6 +63,9 @@ chmod +x install.sh
 - **Auto Start** - Jadwalkan streaming untuk dimulai secara otomatis
 - **Multiple Schedules** - Buat beberapa jadwal sekaligus
 - **Cron Integration** - Jalankan `run_schedule.php` via cron untuk auto-start
+- **Schedule Daemon** - Alternatif daemon process untuk Termux (jika cron tidak tersedia)
+- **Toleransi Waktu** - Jadwal akan dieksekusi jika terlewat maksimal 5 menit atau akan datang dalam 1 menit
+- **Setup Otomatis** - Setup cron via web interface tanpa perlu akses terminal
 
 ### 📊 Monitoring Real-time
 - **CPU Usage** - Monitor penggunaan CPU
@@ -91,6 +94,7 @@ chmod +x install.sh
 - **FFmpeg** - Versi terbaru dengan dukungan encoding H.264
 - **Web Server** - Apache/Nginx (atau PHP built-in server untuk development)
 - **Cron** (opsional) - Untuk auto-start scheduled streams
+- **Schedule Daemon** (opsional) - Alternatif untuk cron, terutama untuk Termux
 
 ### Hardware (Rekomendasi)
 - **Android dengan Termux** - Minimum Android 7.0+
@@ -210,9 +214,42 @@ echo 'User admin created with password: password123\n';
 
 **⚠️ PENTING**: Ganti password default setelah login pertama kali!
 
-### 5. Setup Cron untuk Auto-Schedule (Opsional)
+### 5. Setup Auto-Schedule (Cron atau Daemon)
 
-Untuk menjalankan scheduled streams secara otomatis, tambahkan ke crontab:
+Aplikasi mendukung dua metode untuk menjalankan scheduled streams secara otomatis:
+
+#### Metode 1: Setup Cron via Web Interface (Disarankan)
+
+1. Login ke dashboard
+2. Buka tab **Schedule**
+3. Scroll ke bagian **System & Cron Status**
+4. Jika cron belum terpasang, klik tombol **⚙️ Setup Cron Otomatis**
+5. Jika cron sudah terpasang tapi tidak aktif, klik **🔧 Update/Repair Cron** untuk memperbaiki
+
+**Keuntungan**:
+- Setup otomatis dengan absolute path yang benar
+- Tidak perlu akses terminal/SSH
+- Otomatis mendeteksi dan memperbaiki path yang salah
+
+#### Metode 2: Schedule Daemon (Alternatif untuk Termux)
+
+Jika cron tidak berjalan di Termux, gunakan daemon sebagai alternatif:
+
+1. Login ke dashboard
+2. Buka tab **Schedule**
+3. Scroll ke bagian **🔄 Schedule Daemon (Alternatif untuk Cron)**
+4. Klik tombol **▶️ Start Daemon**
+5. Daemon akan berjalan di background dan mengeksekusi jadwal setiap menit
+
+**Keuntungan Daemon**:
+- Tidak bergantung pada cron service
+- Cocok untuk Termux yang mungkin tidak memiliki cron aktif
+- Mudah dikontrol via web interface
+- Log tersedia di `schedule_daemon.log`
+
+#### Metode 3: Setup Cron Manual (Alternatif)
+
+Jika ingin setup manual via terminal:
 
 ```bash
 # Edit crontab
@@ -230,6 +267,7 @@ crontab -e
 - Pastikan path absolut sesuai dengan lokasi instalasi
 - Pastikan PHP tersedia di PATH
 - Untuk VPS, pastikan user yang menjalankan cron memiliki akses ke directory instalasi
+- Gunakan **Setup Cron via Web Interface** untuk memastikan path yang benar
 
 ### 6. Uninstall (Jika Diperlukan)
 
@@ -401,14 +439,22 @@ rtmp://your-server.com:1935/live/stream_key
 2. Isi form jadwal:
    - **Platform**: Pilih platform
    - **Stream Key/URL**: Masukkan stream key
-   - **Waktu**: Pilih tanggal dan waktu mulai
+   - **Waktu**: Pilih tanggal dan waktu mulai (format: YYYY-MM-DD HH:MM)
    - **Video**: Pilih video
    - **Kualitas**: Pilih kualitas
-   - **Durasi**: Set durasi
+   - **Durasi**: Set durasi (1-24 jam)
    - **Encoder & Preset**: Konfigurasi encoder
    - **Loop**: Aktifkan jika perlu
 3. Klik **Tambah Jadwal**
-4. Pastikan cron job `run_schedule.php` berjalan untuk auto-start
+4. Setup auto-start:
+   - **Via Web**: Klik **⚙️ Setup Cron Otomatis** di bagian System & Cron Status
+   - **Atau**: Klik **▶️ Start Daemon** untuk menggunakan daemon (alternatif cron)
+   - **Atau**: Setup cron manual via terminal (lihat bagian Instalasi)
+
+**Catatan**:
+- Jadwal akan otomatis dieksekusi jika waktunya sesuai (toleransi: -5 menit sampai +1 menit)
+- Setelah dieksekusi, jadwal akan otomatis dihapus dari queue
+- Gunakan tombol **🧪 Test Run** untuk test eksekusi jadwal secara manual
 
 ### 6. Mengelola Video
 
@@ -444,11 +490,21 @@ stream-dashboard/
 ├── delete_video.php       # Handler untuk hapus video
 ├── rename_video.php       # Handler untuk rename video
 ├── schedule.php           # Handler untuk manajemen jadwal
-├── run_schedule.php       # Script untuk menjalankan scheduled streams (via cron)
+├── run_schedule.php       # Script untuk menjalankan scheduled streams (via cron/daemon)
+├── schedule_daemon.php    # Daemon process alternatif untuk cron (Termux)
+├── daemon_control.php     # API untuk kontrol daemon (start/stop/status)
+├── setup_cron.php         # API untuk setup cron otomatis via web
+├── cron_status.php        # API untuk status cron dan daemon
+├── check_cron.php         # Script CLI untuk cek dan setup cron
+├── test_run_schedule.php  # API untuk test run schedule via web
 ├── stats.php              # API untuk statistik sistem
 ├── install.sh             # Script instalasi otomatis
 ├── uninstall.sh           # Script uninstall
 ├── users.json             # Database user (JSON)
+├── schedule_run.log       # Log eksekusi schedule (dibuat otomatis)
+├── schedule_daemon.log     # Log daemon process (dibuat saat daemon berjalan)
+├── schedule_daemon.pid     # PID file daemon (dibuat saat daemon berjalan)
+├── cron_output.log        # Output cron job (jika menggunakan cron)
 ├── assets/
 │   └── theme.css          # Stylesheet tema
 ├── users/                 # Folder data user (dibuat otomatis saat instalasi)
@@ -502,22 +558,52 @@ stream-dashboard/
 
 ### Scheduled Stream Tidak Berjalan
 
-1. **Cek cron job**:
+1. **Cek status cron/daemon via web**:
+   - Login ke dashboard
+   - Buka tab **Schedule**
+   - Scroll ke bagian **System & Cron Status**
+   - Cek status cron atau daemon
+   - Jika cron tidak aktif, klik **🔧 Update/Repair Cron**
+   - Jika daemon tidak berjalan, klik **▶️ Start Daemon**
+
+2. **Cek cron job (jika menggunakan cron)**:
    ```bash
    crontab -l
    ```
 
-2. **Test manual**:
+3. **Cek daemon (jika menggunakan daemon)**:
+   ```bash
+   # Cek apakah daemon berjalan
+   cat schedule_daemon.pid
+   ps -p $(cat schedule_daemon.pid)
+   
+   # Cek log daemon
+   tail -f schedule_daemon.log
+   ```
+
+4. **Test manual**:
    ```bash
    php run_schedule.php
    ```
+   Atau via web: Klik tombol **🧪 Test Run** di dashboard
 
-3. **Cek timezone**:
+5. **Cek log schedule**:
+   ```bash
+   tail -f schedule_run.log
+   ```
+
+6. **Cek timezone**:
    - Pastikan timezone di `run_schedule.php` sesuai dengan lokasi
    - Default: `Asia/Jakarta`
 
-4. **Cek format waktu jadwal**:
+7. **Cek format waktu jadwal**:
    - Format: `YYYY-MM-DD HH:MM` (contoh: `2024-12-25 14:30`)
+   - Jadwal akan dieksekusi jika waktunya sesuai (toleransi: -5 menit sampai +1 menit)
+
+8. **Jika cron tidak berjalan di Termux**:
+   - Gunakan **Schedule Daemon** sebagai alternatif
+   - Klik **▶️ Start Daemon** di dashboard
+   - Daemon akan berjalan di background dan mengeksekusi jadwal setiap menit
 
 ### Permission Denied
 
