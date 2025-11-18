@@ -1,11 +1,18 @@
 # 🎥 Stream Dashboard
 
-Dashboard web berbasis PHP untuk mengelola streaming video live ke berbagai platform (YouTube, Facebook Live, Twitch, dan Custom RTMP) menggunakan FFmpeg. Aplikasi ini dirancang untuk berjalan di Termux (Android) atau Linux dengan kontrol penuh melalui antarmuka web yang modern dan responsif.
+> Dashboard web berbasis PHP untuk mengelola streaming video live ke berbagai platform (YouTube, Facebook Live, Twitch, dan Custom RTMP) menggunakan FFmpeg. Aplikasi ini dirancang untuk berjalan di Termux (Android) atau Linux dengan kontrol penuh melalui antarmuka web yang modern dan responsif.
 
-TESTED di HP non root
-Google Pixel 5 A15 cr droid (GPU ENCODING WORK ) #bug network IO tidak terbaca #permision denied #SNAPDRAGON 765G
-SONY XZ2C A10 Stock Rom (GPU ENCODING WORK) #SNAPDRAGON 845
-Xiaomi Redmi note 5 ROM PostMarket OS Alphine linux base (GPU ENCODING ERROR (kernel issue)) #SNAPDRAGON 636
+---
+
+## 🧪 Perangkat yang Telah Diuji
+
+| Perangkat | ROM/OS | Status GPU Encoding | Catatan | Chipset |
+|-----------|--------|---------------------|---------|---------|
+| Google Pixel 5 | A15 cr droid | ✅ **WORK** | Bug: Network IO tidak terbaca<br>Permission denied | Snapdragon 765G |
+| SONY XZ2C | A10 Stock Rom | ✅ **WORK** | - | Snapdragon 845 |
+| Xiaomi Redmi Note 5 | PostMarket OS (Alpine Linux) | ❌ **ERROR** | Kernel issue | Snapdragon 636 |
+
+> **Catatan**: Semua perangkat diuji tanpa akses root.
 
 ## 📋 Daftar Isi
 
@@ -36,164 +43,213 @@ chmod +x install.sh
 # Via browser: http://[IP]:3100/add_user.php
 # Atau via CLI (lihat bagian Instalasi)
 ```
-Cara menaikkan limit upload jika gagal upload
-Cek limit upload PHP
+
+---
+
+### 📝 Informasi Platform
+
+| Platform | Lokasi Instalasi | Port Default | Web Server |
+|----------|------------------|--------------|------------|
+| ✅ **Termux (Android)** | `~/stream-dashboard` | `3100` | PHP Built-in Server |
+| ✅ **Alpine Linux / postmarketOS** | `~/stream-dashboard` | `3100` | PHP Built-in Server |
+| ✅ **Debian / Ubuntu VPS** | `/opt/stream-dashboard` | `3100` | systemd Service |
+
+---
+
+### ⚙️ Konfigurasi Tambahan
+
+#### 📤 Menaikkan Limit Upload PHP
+
+Jika upload video gagal karena ukuran file terlalu besar, ikuti langkah berikut:
+
+**1. Cek limit upload PHP saat ini:**
 ```bash
 php -r "echo 'upload_max_filesize: '.ini_get('upload_max_filesize').PHP_EOL; echo 'post_max_size: '.ini_get('post_max_size').PHP_EOL;"
-
 ```
-Buat atau edit php.ini (kalo belum ada) #Khusus TERMUX
+
+**2. Buat atau edit `php.ini` (Khusus Termux):**
 ```bash
+# Salin file konfigurasi default
 cp /data/data/com.termux/files/usr/etc/php/php.ini-development /data/data/com.termux/files/usr/etc/php/php.ini
 
-#atau manual
-mkdir /data/data/com.termux/files/usr/etc/php
+# Atau buat manual
+mkdir -p /data/data/com.termux/files/usr/etc/php
 nano /data/data/com.termux/files/usr/etc/php/php.ini
 ```
-letak config php.ini kadang berbeda silahkan cari sendiri/tanya ai
-Ubah atau tambahkan baris ini:
 
-```bash
-upload_max_filesize = 2G 
+> **Catatan**: Lokasi `php.ini` mungkin berbeda tergantung instalasi. Gunakan `php --ini` untuk menemukan lokasi yang tepat.
+
+**3. Ubah atau tambahkan konfigurasi berikut:**
+```ini
+upload_max_filesize = 2G
 post_max_size = 2G
 memory_limit = 1G
 max_execution_time = 300
 ```
 
-Cek ulang limit:
+**4. Verifikasi perubahan:**
 ```bash
 php -r "echo 'upload_max_filesize: '.ini_get('upload_max_filesize').PHP_EOL; echo 'post_max_size: '.ini_get('post_max_size').PHP_EOL;"
-
 ```
 
-SETUP CRONJOB TERMUX
-#Install Cronie
+---
+
+#### ⏰ Setup Cronjob untuk Termux
+
+**1. Install Cronie:**
 ```bash
-pkg install cronie termux-services 
-#Or
+pkg install cronie termux-services
+# Atau
 pkg install cronie
-#enable cron
+```
+
+**2. Enable cron service:**
+```bash
 sv-enable crond
 ```
 
+**3. Edit crontab:**
 ```bash
-# Edit crontab
 crontab -e
 ```
-# Tambahkan baris berikut (cek setiap menit)
-# Untuk Termux/Alpine:
+
+**4. Tambahkan baris berikut (cek setiap menit):**
+
+**Untuk Termux/Alpine:**
 ```bash
 * * * * * PATH=$PATH:/usr/local/bin:/usr/bin:/bin && cd '/data/data/com.termux/files/home/stream-dashboard' && '/data/data/com.termux/files/usr/bin/php' run_schedule.php >> '/data/data/com.termux/files/home/stream-dashboard/cron_output.log' 2>&1
 ```
-# Untuk VPS:
+
+**Untuk VPS:**
 ```bash
 * * * * * cd /opt/stream-dashboard && php run_schedule.php > /dev/null 2>&1
 ```
-SETUP FIX NETWORK DASHBOARD
-#di versi android tertentu/rom tertentu butuh akses root
-#termux
+
+---
+
+#### 🌐 Setup Fix Network Dashboard
+
+Untuk beberapa versi Android/ROM tertentu, mungkin memerlukan akses root untuk membaca statistik network.
+
+**1. Install iproute2 (Termux):**
 ```bash
 pkg install iproute2
 ```
-#check manual via termux
+
+**2. Cek manual via Termux:**
 ```bash
 ip -s link
 ```
 
-**Platform yang Didukung:**
-- ✅ Termux (Android)
-- ✅ Alpine Linux / postmarketOS
-- ✅ Debian / Ubuntu VPS
-
-**Port Default:** 3100
-
-**Lokasi Instalasi:**
-- Termux/Alpine: `~/stream-dashboard`
-- VPS: `/opt/stream-dashboard` (dengan systemd service)
-
 ## ✨ Fitur Utama
 
 ### 🎬 Streaming Multi-Platform
-- **YouTube Live** - Streaming langsung ke YouTube
-- **Facebook Live** - Streaming ke Facebook Live
-- **Twitch** - Streaming ke platform Twitch
-- **Custom RTMP** - Streaming ke server RTMP custom
+
+| Platform | Deskripsi |
+|----------|-----------|
+| **YouTube Live** | Streaming langsung ke YouTube |
+| **Facebook Live** | Streaming ke Facebook Live |
+| **Twitch** | Streaming ke platform Twitch |
+| **Custom RTMP** | Streaming ke server RTMP custom |
 
 ### 🚀 Fitur Streaming
-- **Dual Slot Streaming** - Jalankan hingga 2 streaming secara bersamaan
-- **Video Looping** - Putar video secara berulang tanpa batas
-- **Kualitas Disesuaikan** - Pilih kualitas Low (480p), Medium (720p), atau High (1080p)
-- **Hardware/Software Encoding** - Dukungan encoder CPU (libx264) dan GPU (hardware acceleration)
-- **Preset Encoding** - Kontrol preset encoding untuk kualitas dan performa
-- **Durasi Streaming** - Set durasi streaming otomatis (1-24 jam)
+
+- ✅ **Dual Slot Streaming** - Jalankan hingga 2 streaming secara bersamaan
+- 🔄 **Video Looping** - Putar video secara berulang tanpa batas
+- 🎯 **Kualitas Disesuaikan** - Pilih kualitas Low (480p), Medium (720p), atau High (1080p)
+- ⚡ **Hardware/Software Encoding** - Dukungan encoder CPU (libx264) dan GPU (hardware acceleration)
+- 🎛️ **Preset Encoding** - Kontrol preset encoding untuk kualitas dan performa
+- ⏱️ **Durasi Streaming** - Set durasi streaming otomatis (1-24 jam)
 
 ### 📅 Penjadwalan
-- **Auto Start** - Jadwalkan streaming untuk dimulai secara otomatis
-- **Multiple Schedules** - Buat beberapa jadwal sekaligus
-- **Cron Integration** - Jalankan `run_schedule.php` via cron untuk auto-start
-- **Schedule Daemon** - Alternatif daemon process untuk Termux (jika cron tidak tersedia)
-- **Toleransi Waktu** - Jadwal akan dieksekusi jika terlewat maksimal 5 menit atau akan datang dalam 1 menit
-- **Setup Otomatis** - Setup cron via web interface tanpa perlu akses terminal
+
+- 🤖 **Auto Start** - Jadwalkan streaming untuk dimulai secara otomatis
+- 📋 **Multiple Schedules** - Buat beberapa jadwal sekaligus
+- ⏰ **Cron Integration** - Jalankan `run_schedule.php` via cron untuk auto-start
+- 🔄 **Schedule Daemon** - Alternatif daemon process untuk Termux (jika cron tidak tersedia)
+- ⏳ **Toleransi Waktu** - Jadwal akan dieksekusi jika terlewat maksimal 5 menit atau akan datang dalam 1 menit
+- 🛠️ **Setup Otomatis** - Setup cron via web interface tanpa perlu akses terminal
 
 ### 📊 Monitoring Real-time
-- **CPU Usage** - Monitor penggunaan CPU
-- **RAM Usage** - Monitor penggunaan memori
-- **Disk Usage** - Monitor penggunaan storage
-- **Network I/O** - Monitor kecepatan upload/download
+
+- 💻 **CPU Usage** - Monitor penggunaan CPU
+- 🧠 **RAM Usage** - Monitor penggunaan memori
+- 💾 **Disk Usage** - Monitor penggunaan storage
+- 🌐 **Network I/O** - Monitor kecepatan upload/download
 
 ### 🎞️ Manajemen Video
-- **Upload Video** - Upload file video MP4 melalui web interface
-- **Galeri Video** - Lihat semua video yang tersedia
-- **Rename Video** - Ubah nama file video
-- **Delete Video** - Hapus video yang tidak diperlukan
+
+- 📤 **Upload Video** - Upload file video MP4 melalui web interface
+- 🖼️ **Galeri Video** - Lihat semua video yang tersedia
+- ✏️ **Rename Video** - Ubah nama file video
+- 🗑️ **Delete Video** - Hapus video yang tidak diperlukan
 
 ### 👥 Multi-User System
-- **User Management** - Sistem multi-user dengan isolasi data per user
-- **Secure Login** - Autentikasi berbasis password hash
-- **User Isolation** - Setiap user memiliki folder dan data terpisah
+
+- 👤 **User Management** - Sistem multi-user dengan isolasi data per user
+- 🔐 **Secure Login** - Autentikasi berbasis password hash
+- 🔒 **User Isolation** - Setiap user memiliki folder dan data terpisah
 
 ## 🔧 Persyaratan Sistem
 
-### Software yang Diperlukan
-- **PHP 7.4+** dengan ekstensi:
-  - `posix` (untuk manajemen proses)
-  - `json` (untuk data storage)
-  - `session` (untuk autentikasi)
-- **FFmpeg** - Versi terbaru dengan dukungan encoding H.264
-- **Web Server** - Apache/Nginx (atau PHP built-in server untuk development)
-- **Cron** (opsional) - Untuk auto-start scheduled streams
-- **Schedule Daemon** (opsional) - Alternatif untuk cron, terutama untuk Termux
+### 💻 Software yang Diperlukan
 
-### Hardware (Rekomendasi)
-- **Android dengan Termux** - Minimum Android 7.0+
-- **Linux Server** - Ubuntu/Debian/CentOS
-- **RAM** - Minimum 2GB (4GB+ direkomendasikan untuk dual streaming)
-- **Storage** - Tergantung ukuran video yang akan di-stream
+| Komponen | Versi | Keterangan |
+|----------|-------|------------|
+| **PHP** | 7.4+ | Dengan ekstensi: `posix`, `json`, `session` |
+| **FFmpeg** | Latest | Dengan dukungan encoding H.264 |
+| **Web Server** | - | Apache/Nginx atau PHP built-in server |
+| **Cron** | - | Opsional - Untuk auto-start scheduled streams |
+| **Schedule Daemon** | - | Opsional - Alternatif untuk cron (Termux) |
 
-### Encoder Support
-Aplikasi ini mendukung berbagai hardware encoder:
-- **CPU**: libx264 (software encoding)
-- **GPU/Hardware**:
-  - `h264_mediacodec` - Android MediaCodec (untuk Termux)
-  - `h264_vulkan` - Vulkan H.264
-  - `h264_nvenc` - NVIDIA NVENC
-  - `h264_qsv` - Intel Quick Sync
-  - `h264_v4l2m2m` - V4L2 M2M (Raspberry Pi/Android)
-  - `h264_omx` - OpenMAX (Raspberry Pi)
-  - `h264_videotoolbox` - VideoToolbox (macOS)
+#### Ekstensi PHP yang Diperlukan
+
+- `posix` - Untuk manajemen proses
+- `json` - Untuk data storage
+- `session` - Untuk autentikasi
+
+### 🖥️ Hardware (Rekomendasi)
+
+| Komponen | Minimum | Direkomendasikan |
+|----------|---------|------------------|
+| **Platform** | Android 7.0+ (Termux) | Linux Server (Ubuntu/Debian/CentOS) |
+| **RAM** | 2GB | 4GB+ (untuk dual streaming) |
+| **Storage** | Tergantung ukuran video | SSD direkomendasikan |
+
+### 🎬 Encoder Support
+
+Aplikasi ini mendukung berbagai hardware encoder untuk performa optimal:
+
+#### CPU Encoder
+- **libx264** - Software encoding (universal support)
+
+#### GPU/Hardware Encoders
+
+| Encoder | Platform | Deskripsi |
+|---------|----------|-----------|
+| `h264_mediacodec` | Android/Termux | Android MediaCodec |
+| `h264_vulkan` | Multi-platform | Vulkan H.264 |
+| `h264_nvenc` | NVIDIA GPU | NVIDIA NVENC |
+| `h264_qsv` | Intel | Intel Quick Sync |
+| `h264_v4l2m2m` | Raspberry Pi/Android | V4L2 M2M |
+| `h264_omx` | Raspberry Pi | OpenMAX |
+| `h264_videotoolbox` | macOS | VideoToolbox |
 
 ## 📦 Instalasi
 
-### Metode Instalasi Otomatis (Disarankan)
+### 🚀 Metode Instalasi Otomatis (Disarankan)
 
 Aplikasi ini menyediakan script instalasi otomatis yang mendukung berbagai platform. Script akan secara otomatis:
-- Mendeteksi platform (Termux, Alpine, atau VPS)
-- Menginstall dependencies yang diperlukan
-- Menyalin file ke lokasi instalasi
-- Setup web server (untuk VPS: systemd service)
-- Membuat folder dan permission yang diperlukan
 
-### 1. Download atau Clone Project
+- ✅ Mendeteksi platform (Termux, Alpine, atau VPS)
+- 📦 Menginstall dependencies yang diperlukan
+- 📁 Menyalin file ke lokasi instalasi
+- 🌐 Setup web server (untuk VPS: systemd service)
+- 🔐 Membuat folder dan permission yang diperlukan
+
+---
+
+### 1️⃣ Download atau Clone Project
 
 ```bash
 # Clone repository (jika menggunakan git)
@@ -203,7 +259,9 @@ cd stream-dashboard
 # Atau download dan extract project ke folder stream-dashboard
 ```
 
-### 2. Jalankan Script Instalasi
+---
+
+### 2️⃣ Jalankan Script Instalasi
 
 ```bash
 # Berikan permission execute
@@ -213,33 +271,38 @@ chmod +x install.sh
 ./install.sh
 ```
 
-Script akan secara otomatis:
-- **Mendeteksi platform** (Termux/Android, Alpine/postmarketOS, atau VPS Debian/Ubuntu)
-- **Menginstall dependencies** (PHP, FFmpeg, dll)
-- **Menyalin file** dari directory saat ini ke lokasi instalasi
-- **Setup web server** sesuai platform
+**Script akan secara otomatis melakukan:**
 
-#### Lokasi Instalasi per Platform:
-- **Termux**: `~/stream-dashboard`
-- **Alpine/postmarketOS**: `~/stream-dashboard`
-- **VPS Debian/Ubuntu**: `/opt/stream-dashboard` (dengan systemd service)
+| Tugas | Deskripsi |
+|-------|-----------|
+| 🔍 **Deteksi Platform** | Termux/Android, Alpine/postmarketOS, atau VPS Debian/Ubuntu |
+| 📦 **Install Dependencies** | PHP, FFmpeg, dan komponen lainnya |
+| 📁 **Copy Files** | Menyalin file ke lokasi instalasi |
+| 🌐 **Setup Web Server** | Konfigurasi sesuai platform |
 
-#### Port Default:
-- Port default: **3100**
-- Untuk VPS: Service otomatis berjalan di port 3100
-- Untuk Termux/Alpine: Jalankan manual dengan `php -S 0.0.0.0:3100`
+**Lokasi Instalasi per Platform:**
 
-### 3. Akses Dashboard
+| Platform | Lokasi | Web Server |
+|----------|--------|------------|
+| **Termux** | `~/stream-dashboard` | PHP Built-in Server |
+| **Alpine/postmarketOS** | `~/stream-dashboard` | PHP Built-in Server |
+| **VPS Debian/Ubuntu** | `/opt/stream-dashboard` | systemd Service |
 
-Setelah instalasi selesai:
+**Port Default:** `3100`
 
-#### Untuk VPS (Debian/Ubuntu):
+### 3️⃣ Akses Dashboard
+
+Setelah instalasi selesai, akses dashboard sesuai platform:
+
+#### 🖥️ Untuk VPS (Debian/Ubuntu)
+
 ```bash
 # Service sudah otomatis berjalan
 # Akses via: http://[IP_SERVER]:3100
 ```
 
-#### Untuk Termux:
+#### 📱 Untuk Termux
+
 ```bash
 cd ~/stream-dashboard
 php -S 0.0.0.0:3100
@@ -248,7 +311,8 @@ php -S 0.0.0.0:3100
 # Atau dari device lain: http://[IP_TERMUX]:3100
 ```
 
-#### Untuk Alpine/postmarketOS:
+#### 🐧 Untuk Alpine/postmarketOS
+
 ```bash
 cd ~/stream-dashboard
 php -S 0.0.0.0:3100
@@ -256,16 +320,20 @@ php -S 0.0.0.0:3100
 # Akses via: http://localhost:3100
 ```
 
-### 4. Buat User Pertama
+---
+
+### 4️⃣ Buat User Pertama
 
 Setelah dashboard dapat diakses, buat user pertama:
 
-1. **Via Browser** (Disarankan):
-   - Akses: `http://[IP]:3100/add_user.php`
-   - Isi username dan password
-   - Klik "Tambah Pengguna"
+#### 🌐 Via Browser (Disarankan)
 
-2. **Via Command Line**:
+1. Akses: `http://[IP]:3100/add_user.php`
+2. Isi username dan password
+3. Klik **"Tambah Pengguna"**
+
+#### 💻 Via Command Line
+
 ```bash
 # Masuk ke directory instalasi
 cd ~/stream-dashboard  # atau /opt/stream-dashboard untuk VPS
@@ -280,13 +348,13 @@ echo 'User admin created with password: password123\n';
 "
 ```
 
-**⚠️ PENTING**: Ganti password default setelah login pertama kali!
+> **⚠️ PENTING**: Ganti password default setelah login pertama kali!
 
-### 5. Setup Auto-Schedule (Cron atau Daemon)
+### 5️⃣ Setup Auto-Schedule (Cron atau Daemon)
 
-Aplikasi mendukung dua metode untuk menjalankan scheduled streams secara otomatis:
+Aplikasi mendukung tiga metode untuk menjalankan scheduled streams secara otomatis:
 
-#### Metode 1: Setup Cron via Web Interface (Disarankan)
+#### 🌐 Metode 1: Setup Cron via Web Interface (Disarankan)
 
 1. Login ke dashboard
 2. Buka tab **Schedule**
@@ -294,12 +362,14 @@ Aplikasi mendukung dua metode untuk menjalankan scheduled streams secara otomati
 4. Jika cron belum terpasang, klik tombol **⚙️ Setup Cron Otomatis**
 5. Jika cron sudah terpasang tapi tidak aktif, klik **🔧 Update/Repair Cron** untuk memperbaiki
 
-**Keuntungan**:
-- Setup otomatis dengan absolute path yang benar
-- Tidak perlu akses terminal/SSH
-- Otomatis mendeteksi dan memperbaiki path yang salah
+**✅ Keuntungan:**
+- 🎯 Setup otomatis dengan absolute path yang benar
+- 🖥️ Tidak perlu akses terminal/SSH
+- 🔧 Otomatis mendeteksi dan memperbaiki path yang salah
 
-#### Metode 2: Schedule Daemon (Alternatif untuk Termux)
+---
+
+#### 🔄 Metode 2: Schedule Daemon (Alternatif untuk Termux)
 
 Jika cron tidak berjalan di Termux, gunakan daemon sebagai alternatif:
 
@@ -309,37 +379,44 @@ Jika cron tidak berjalan di Termux, gunakan daemon sebagai alternatif:
 4. Klik tombol **▶️ Start Daemon**
 5. Daemon akan berjalan di background dan mengeksekusi jadwal setiap menit
 
-**Keuntungan Daemon**:
-- Tidak bergantung pada cron service
-- Cocok untuk Termux yang mungkin tidak memiliki cron aktif
-- Mudah dikontrol via web interface
-- Log tersedia di `schedule_daemon.log`
+**✅ Keuntungan Daemon:**
+- 🔌 Tidak bergantung pada cron service
+- 📱 Cocok untuk Termux yang mungkin tidak memiliki cron aktif
+- 🎛️ Mudah dikontrol via web interface
+- 📝 Log tersedia di `schedule_daemon.log`
 
-#### Metode 3: Setup Cron Manual (Alternatif)
+---
+
+#### 💻 Metode 3: Setup Cron Manual (Alternatif)
 
 Jika ingin setup manual via terminal:
 
+**1. Edit crontab:**
 ```bash
-# Edit crontab
 crontab -e
 ```
-# Tambahkan baris berikut (cek setiap menit)
-# Untuk Termux/Alpine:
+
+**2. Tambahkan baris berikut (cek setiap menit):**
+
+**Untuk Termux/Alpine:**
 ```bash
 * * * * * PATH=$PATH:/usr/local/bin:/usr/bin:/bin && cd '/data/data/com.termux/files/home/stream-dashboard' && '/data/data/com.termux/files/usr/bin/php' run_schedule.php >> '/data/data/com.termux/files/home/stream-dashboard/cron_output.log' 2>&1
 ```
-# Untuk VPS:
+
+**Untuk VPS:**
 ```bash
 * * * * * cd /opt/stream-dashboard && php run_schedule.php > /dev/null 2>&1
 ```
 
-**Catatan**: 
-- Pastikan path absolut sesuai dengan lokasi instalasi
-- Pastikan PHP tersedia di PATH
-- Untuk VPS, pastikan user yang menjalankan cron memiliki akses ke directory instalasi
-- Gunakan **Setup Cron via Web Interface** untuk memastikan path yang benar
+> **📌 Catatan**: 
+> - Pastikan path absolut sesuai dengan lokasi instalasi
+> - Pastikan PHP tersedia di PATH
+> - Untuk VPS, pastikan user yang menjalankan cron memiliki akses ke directory instalasi
+> - Gunakan **Setup Cron via Web Interface** untuk memastikan path yang benar
 
-### 6. Uninstall (Jika Diperlukan)
+---
+
+### 6️⃣ Uninstall (Jika Diperlukan)
 
 Untuk menghapus instalasi:
 
@@ -352,128 +429,84 @@ chmod +x uninstall.sh
 ./uninstall.sh
 ```
 
-Script akan:
-- Menghentikan service (untuk VPS)
-- Menghapus file instalasi
-- Menghapus systemd service (untuk VPS)
+**Script akan melakukan:**
+- 🛑 Menghentikan service (untuk VPS)
+- 🗑️ Menghapus file instalasi
+- 🔧 Menghapus systemd service (untuk VPS)
 
 ---
 
-### Metode Instalasi Manual (Alternatif)
-
-Jika Anda lebih suka instalasi manual atau menggunakan web server lain (Apache/Nginx):
-
-#### Setup Manual untuk Apache
-
-```bash
-# Copy project ke web root
-sudo cp -r stream-dashboard /var/www/html/
-
-# Atau buat virtual host (disarankan)
-sudo nano /etc/apache2/sites-available/stream-dashboard.conf
-```
-
-Tambahkan konfigurasi:
-```apache
-<VirtualHost *:80>
-    ServerName stream-dashboard.local
-    DocumentRoot /var/www/html/stream-dashboard
-    
-    <Directory /var/www/html/stream-dashboard>
-        Options Indexes FollowSymLinks
-        AllowOverride All
-        Require all granted
-    </Directory>
-</VirtualHost>
-```
-
-Aktifkan site:
-```bash
-sudo a2ensite stream-dashboard.conf
-sudo systemctl restart apache2
-```
-
-#### Setup Manual untuk Nginx
-
-```nginx
-server {
-    listen 80;
-    server_name stream-dashboard.local;
-    root /var/www/html/stream-dashboard;
-    index index.php;
-
-    location / {
-        try_files $uri $uri/ /index.php?$query_string;
-    }
-
-    location ~ \.php$ {
-        fastcgi_pass unix:/var/run/php/php7.4-fpm.sock;
-        fastcgi_index index.php;
-        include fastcgi_params;
-        fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
-    }
-}
-```
-
-**Catatan**: Untuk instalasi manual, pastikan:
-- Folder `users/` memiliki permission yang tepat (755 atau 777 untuk development)
-- Web server memiliki akses write ke folder `users/`
-
 ## ⚙️ Konfigurasi
 
-### Konfigurasi Platform Streaming
+### 🌐 Konfigurasi Platform Streaming
 
-#### YouTube Live
+#### 📺 YouTube Live
+
 1. Buka [YouTube Studio](https://studio.youtube.com)
 2. Pilih **Go Live** → **Stream**
 3. Salin **Stream Key** yang diberikan
 4. Masukkan stream key di dashboard
 
-#### Facebook Live
+#### 📘 Facebook Live
+
 1. Buka [Facebook Live](https://www.facebook.com/live/create)
 2. Salin **Stream Key** dari pengaturan
 3. Masukkan stream key di dashboard
 
-#### Twitch
+#### 🟣 Twitch
+
 1. Buka [Twitch Dashboard](https://dashboard.twitch.tv/settings/stream)
 2. Salin **Primary Stream Key**
 3. Masukkan stream key di dashboard
 
-#### Custom RTMP
+#### 🔗 Custom RTMP
+
 Masukkan URL RTMP lengkap, contoh:
+
 ```
 rtmp://your-server.com:1935/live/stream_key
 ```
 
-### Konfigurasi Encoder
+---
 
-#### CPU Encoder (libx264)
-- **Preset**: Pilih dari ultrafast hingga veryslow
-  - `ultrafast` - Tercepat, kualitas lebih rendah (untuk perangkat lemah)
-  - `veryfast` - Cepat, kualitas baik (disarankan)
-  - `medium` - Seimbang antara kecepatan dan kualitas
-  - `veryslow` - Terlambat, kualitas terbaik
+### 🎛️ Konfigurasi Encoder
 
-#### GPU Encoder (Hardware)
-- Otomatis mendeteksi hardware encoder yang tersedia
-- Tidak menggunakan preset (hardware encoder memiliki preset sendiri)
-- Lebih efisien untuk perangkat yang mendukung
+#### 💻 CPU Encoder (libx264)
 
-### Konfigurasi Kualitas
+| Preset | Kecepatan | Kualitas | Rekomendasi |
+|--------|-----------|----------|-------------|
+| `ultrafast` | ⚡ Tercepat | ⭐ Rendah | Perangkat lemah |
+| `veryfast` | ⚡⚡ Cepat | ⭐⭐ Baik | ✅ **Disarankan** |
+| `medium` | ⚡⚡⚡ Sedang | ⭐⭐⭐ Seimbang | Keseimbangan |
+| `veryslow` | 🐌 Terlambat | ⭐⭐⭐⭐⭐ Terbaik | Kualitas maksimal |
 
-- **Low (480p)**: Bitrate 1000k, cocok untuk koneksi lambat
-- **Medium (720p)**: Bitrate 2000k, kualitas seimbang (disarankan)
-- **High (1080p)**: Bitrate 6000k, kualitas tinggi (perlu koneksi cepat)
+#### 🎮 GPU Encoder (Hardware)
+
+- ✅ Otomatis mendeteksi hardware encoder yang tersedia
+- ⚙️ Tidak menggunakan preset (hardware encoder memiliki preset sendiri)
+- 🚀 Lebih efisien untuk perangkat yang mendukung
+
+---
+
+### 📊 Konfigurasi Kualitas
+
+| Kualitas | Resolusi | Bitrate | Bandwidth | Rekomendasi |
+|----------|----------|---------|-----------|-------------|
+| **Low** | 480p | 1000k | ~1 Mbps | Koneksi lambat |
+| **Medium** | 720p | 2000k | ~2 Mbps | ✅ **Disarankan** |
+| **High** | 1080p | 6000k | ~6 Mbps | Koneksi cepat |
 
 ## 📖 Cara Penggunaan
 
-### 1. Login ke Dashboard
+### 1️⃣ Login ke Dashboard
 
 1. Buka browser dan akses URL dashboard (contoh: `http://localhost:3100`)
 2. Masukkan username dan password
 3. Klik **Login**
 
-### 2. Upload Video
+---
+
+### 2️⃣ Upload Video
 
 1. Klik tab **Upload**
 2. Pilih file video MP4
@@ -481,11 +514,13 @@ rtmp://your-server.com:1935/live/stream_key
 4. Tunggu hingga upload selesai
 5. Video akan muncul di tab **Galeri**
 
-### 3. Mulai Streaming
+---
+
+### 3️⃣ Mulai Streaming
 
 1. Klik tab **Streaming**
 2. Pastikan ada slot tersedia (maksimal 2 streaming bersamaan)
-3. Isi form:
+3. Isi form streaming:
    - **Platform**: Pilih platform tujuan
    - **Stream Key/URL**: Masukkan stream key atau URL RTMP
    - **Pilih Video**: Pilih video dari dropdown
@@ -497,19 +532,23 @@ rtmp://your-server.com:1935/live/stream_key
 4. Klik **Mulai Streaming**
 5. Status streaming akan muncul di dashboard
 
-### 4. Menghentikan Streaming
+---
+
+### 4️⃣ Menghentikan Streaming
 
 1. Di tab **Streaming**, cari slot yang aktif
 2. Klik tombol **Stop Slot X**
 3. Streaming akan dihentikan
 
-### 5. Menjadwalkan Streaming
+---
+
+### 5️⃣ Menjadwalkan Streaming
 
 1. Klik tab **Jadwal**
 2. Isi form jadwal:
    - **Platform**: Pilih platform
    - **Stream Key/URL**: Masukkan stream key
-   - **Waktu**: Pilih tanggal dan waktu mulai (format: YYYY-MM-DD HH:MM)
+   - **Waktu**: Pilih tanggal dan waktu mulai (format: `YYYY-MM-DD HH:MM`)
    - **Video**: Pilih video
    - **Kualitas**: Pilih kualitas
    - **Durasi**: Set durasi (1-24 jam)
@@ -521,30 +560,39 @@ rtmp://your-server.com:1935/live/stream_key
    - **Atau**: Klik **▶️ Start Daemon** untuk menggunakan daemon (alternatif cron)
    - **Atau**: Setup cron manual via terminal (lihat bagian Instalasi)
 
-**Catatan**:
-- Jadwal akan otomatis dieksekusi jika waktunya sesuai (toleransi: -5 menit sampai +1 menit)
-- Setelah dieksekusi, jadwal akan otomatis dihapus dari queue
-- Gunakan tombol **🧪 Test Run** untuk test eksekusi jadwal secara manual
+> **📌 Catatan Penting**:
+> - Jadwal akan otomatis dieksekusi jika waktunya sesuai (toleransi: -5 menit sampai +1 menit)
+> - Setelah dieksekusi, jadwal akan otomatis dihapus dari queue
+> - Gunakan tombol **🧪 Test Run** untuk test eksekusi jadwal secara manual
 
-### 6. Mengelola Video
+---
 
-#### Rename Video
+### 6️⃣ Mengelola Video
+
+#### ✏️ Rename Video
+
 1. Buka tab **Galeri**
 2. Masukkan nama baru di form rename
 3. Klik **Ganti Nama**
 
-#### Delete Video
+#### 🗑️ Delete Video
+
 1. Buka tab **Galeri**
 2. Klik **Hapus** pada video yang ingin dihapus
 3. Konfirmasi penghapusan
 
-### 7. Monitoring
+---
+
+### 7️⃣ Monitoring
 
 Dashboard menampilkan statistik real-time:
-- **CPU Load** - Update setiap 10 detik
-- **RAM Usage** - Penggunaan memori
-- **Storage Usage** - Penggunaan disk
-- **Network I/O** - Kecepatan upload/download
+
+| Metrik | Update | Deskripsi |
+|--------|--------|-----------|
+| **CPU Load** | Setiap 10 detik | Penggunaan CPU |
+| **RAM Usage** | Real-time | Penggunaan memori |
+| **Storage Usage** | Real-time | Penggunaan disk |
+| **Network I/O** | Real-time | Kecepatan upload/download |
 
 ## 📁 Struktur Proyek
 
@@ -803,39 +851,66 @@ stream-dashboard/
 
 ## 📝 Catatan Penting
 
-1. **Keamanan**:
-   - Jangan expose dashboard ke internet tanpa autentikasi yang kuat
-   - Gunakan HTTPS untuk production
-   - Ganti password default
-   - Pertimbangkan menggunakan firewall
+### 🔒 Keamanan
 
-2. **Performance**:
-   - Dual streaming membutuhkan resource yang cukup
-   - Monitor CPU dan RAM usage
-   - Gunakan hardware encoder jika tersedia untuk performa lebih baik
+- ⚠️ Jangan expose dashboard ke internet tanpa autentikasi yang kuat
+- 🔐 Gunakan HTTPS untuk production
+- 🔑 Ganti password default setelah instalasi
+- 🛡️ Pertimbangkan menggunakan firewall
 
-3. **Storage**:
-   - Video yang di-upload akan memakan storage
-   - Pertimbangkan untuk menghapus video yang tidak digunakan
-   - Monitor disk usage secara berkala
+### ⚡ Performance
 
-4. **Network**:
-   - Streaming membutuhkan bandwidth yang stabil
-   - Pastikan upload speed mencukupi untuk kualitas yang dipilih
-   - Low: ~1 Mbps, Medium: ~2 Mbps, High: ~6 Mbps
+- 💻 Dual streaming membutuhkan resource yang cukup
+- 📊 Monitor CPU dan RAM usage secara berkala
+- 🎮 Gunakan hardware encoder jika tersedia untuk performa lebih baik
+
+### 💾 Storage
+
+- 📁 Video yang di-upload akan memakan storage
+- 🗑️ Pertimbangkan untuk menghapus video yang tidak digunakan
+- 📊 Monitor disk usage secara berkala
+
+### 🌐 Network
+
+- 📡 Streaming membutuhkan bandwidth yang stabil
+- ⚡ Pastikan upload speed mencukupi untuk kualitas yang dipilih
+
+| Kualitas | Bandwidth Minimum |
+|----------|-------------------|
+| **Low** | ~1 Mbps |
+| **Medium** | ~2 Mbps |
+| **High** | ~6 Mbps |
 
 ## 📄 Lisensi
 
-Lihat file [LICENSE](LICENSE) untuk informasi lisensi.
-
-## 🤝 Kontribusi
-
-Kontribusi sangat diterima! Silakan buat issue atau pull request.
-
-## 📧 Support
-
-Jika mengalami masalah atau memiliki pertanyaan, silakan buat issue di repository atau hubungi maintainer.
+Lihat file [LICENSE](LICENSE) untuk informasi lisensi lengkap.
 
 ---
 
+## 🤝 Kontribusi
+
+Kontribusi sangat diterima! Silakan:
+
+- 🐛 Buat [issue](https://github.com/latifangren/stream-dashboard/issues) untuk melaporkan bug atau meminta fitur
+- 🔀 Buat [pull request](https://github.com/latifangren/stream-dashboard/pulls) untuk berkontribusi kode
+- 📖 Perbaiki dokumentasi jika menemukan kesalahan
+
+---
+
+## 📧 Support
+
+Jika mengalami masalah atau memiliki pertanyaan:
+
+- 📝 Buat [issue](https://github.com/latifangren/stream-dashboard/issues) di repository
+- 💬 Diskusikan di [Discussions](https://github.com/latifangren/stream-dashboard/discussions)
+- 📧 Hubungi maintainer
+
+---
+
+<div align="center">
+
 **Dibuat dengan ❤️ untuk streaming yang lebih mudah**
+
+⭐ Jika project ini membantu Anda, pertimbangkan untuk memberikan star!
+
+</div>
