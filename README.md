@@ -37,7 +37,7 @@ Buat atau edit php.ini (karena sekarang belum ada yang aktif)
 ```bash
 cp /data/data/com.termux/files/usr/etc/php/php.ini-development /data/data/com.termux/files/usr/etc/php/php.ini
 nano /data/data/com.termux/files/usr/etc/php/php.ini
-
+```
 letak config php.ini kadang berbeda silahkan cari sendiri/tanya ai
 Ubah atau tambahkan baris ini:
 
@@ -48,15 +48,15 @@ max_execution_time = 300
 
 
 Cek ulang limit:
-
+```bash
 php -r "echo 'upload_max_filesize: '.ini_get('upload_max_filesize').PHP_EOL; echo 'post_max_size: '
-
+```
 
 SETUP CRONJOB TERMUX
 ```bash
 # Edit crontab
 crontab -e
-
+```
 # Tambahkan baris berikut (cek setiap menit)
 # Untuk Termux/Alpine:
 * * * * * cd ~/stream-dashboard && php run_schedule.php > /dev/null 2>&1
