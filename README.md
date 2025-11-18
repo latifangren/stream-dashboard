@@ -65,7 +65,7 @@ crontab -e
 # Tambahkan baris berikut (cek setiap menit)
 # Untuk Termux/Alpine:
 ```bash
-* * * * * cd ~/stream-dashboard && php run_schedule.php > /dev/null 2>&1
+* * * * * PATH=$PATH:/usr/local/bin:/usr/bin:/bin && cd '/data/data/com.termux/files/home/stream-dashboard' && '/data/data/com.termux/files/usr/bin/php' run_schedule.php >> '/data/data/com.termux/files/home/stream-dashboard/cron_output.log' 2>&1
 ```
 # Untuk VPS:
 ```bash
