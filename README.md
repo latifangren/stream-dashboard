@@ -32,8 +32,12 @@ chmod +x install.sh
 # Atau via CLI (lihat bagian Instalasi)
 ```
 Cara menaikkan limit upload jika gagal upload
+Cek limit upload PHP
+```bash
+php -r "echo 'upload_max_filesize: '.ini_get('upload_max_filesize').PHP_EOL; echo 'post_max_size: '.ini_get('post_max_size').PHP_EOL;"
 
-Buat atau edit php.ini (karena sekarang belum ada yang aktif)
+```
+Buat atau edit php.ini (kalo belum ada) #Khusus TERMUX
 ```bash
 cp /data/data/com.termux/files/usr/etc/php/php.ini-development /data/data/com.termux/files/usr/etc/php/php.ini
 
@@ -45,7 +49,7 @@ letak config php.ini kadang berbeda silahkan cari sendiri/tanya ai
 Ubah atau tambahkan baris ini:
 
 ```bash
-upload_max_filesize = 2G
+upload_max_filesize = 2G 
 post_max_size = 2G
 memory_limit = 1G
 max_execution_time = 300
@@ -58,6 +62,15 @@ php -r "echo 'upload_max_filesize: '.ini_get('upload_max_filesize').PHP_EOL; ech
 ```
 
 SETUP CRONJOB TERMUX
+#Install Cronie
+```bash
+pkg install cronie termux-services 
+#Or
+pkg install cronie
+#enable cron
+sv-enable crond
+```
+
 ```bash
 # Edit crontab
 crontab -e
