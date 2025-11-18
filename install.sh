@@ -47,155 +47,6 @@ fi
 APP_DIR="stream-dashboard"
 PORT="3100"
 
-# Fungsi untuk konfigurasi PHP
-configure_php() {
-  local platform=$1
-  echo "⚙️ Mengonfigurasi PHP settings..."
-  
-  PHP_INI=""
-  PHP_INI_DIR=""
-  
-  case "$platform" in
-    termux)
-      PHP_INI_DIR="/data/data/com.termux/files/usr/etc/php"
-      PHP_INI="$PHP_INI_DIR/php.ini"
-      PHP_INI_DEV="$PHP_INI_DIR/php.ini-development"
-      ;;
-    alpine)
-      # Alpine bisa punya beberapa lokasi
-      PHP_INI_DIR="/etc/php83"  # untuk php83
-      if [ ! -d "$PHP_INI_DIR" ]; then
-        PHP_INI_DIR="/etc/php"
-      fi
-      PHP_INI="$PHP_INI_DIR/php.ini"
-      PHP_INI_DEV="$PHP_INI_DIR/php.ini-development"
-      if [ ! -f "$PHP_INI_DEV" ]; then
-        PHP_INI_DEV="$PHP_INI_DIR/php.ini-production"
-      fi
-      ;;
-    vps)
-      # VPS biasanya menggunakan php.ini di /etc/php/[version]/cli atau /etc/php/[version]/apache2
-      # Cari versi PHP yang terinstall
-      PHP_VERSION=$(php -r "echo PHP_MAJOR_VERSION.'.'.PHP_MINOR_VERSION;" 2>/dev/null || echo "")
-      if [ -n "$PHP_VERSION" ]; then
-        # Coba lokasi CLI dulu (untuk PHP CLI)
-        PHP_INI_DIR="/etc/php/$PHP_VERSION/cli"
-        if [ -d "$PHP_INI_DIR" ]; then
-          PHP_INI="$PHP_INI_DIR/php.ini"
-          PHP_INI_DEV="$PHP_INI_DIR/php.ini-development"
-          if [ ! -f "$PHP_INI_DEV" ]; then
-            PHP_INI_DEV="$PHP_INI_DIR/php.ini-production"
-          fi
-        else
-          # Fallback ke lokasi umum
-          PHP_INI_DIR="/etc/php/$PHP_VERSION"
-          PHP_INI="$PHP_INI_DIR/php.ini"
-          PHP_INI_DEV="$PHP_INI_DIR/php.ini-development"
-        fi
-      else
-        # Fallback jika tidak bisa deteksi versi
-        PHP_INI_DIR="/etc/php"
-        PHP_INI="$PHP_INI_DIR/php.ini"
-        PHP_INI_DEV="$PHP_INI_DIR/php.ini-development"
-      fi
-      ;;
-  esac
-  
-  # Jika php.ini tidak ada, copy dari development
-  if [ ! -f "$PHP_INI" ] && [ -f "$PHP_INI_DEV" ]; then
-    echo "📋 Menyalin php.ini-development ke php.ini..."
-    if [ "$platform" = "vps" ]; then
-      sudo cp "$PHP_INI_DEV" "$PHP_INI"
-    elif [ "$platform" = "alpine" ]; then
-      doas cp "$PHP_INI_DEV" "$PHP_INI"
-    else
-      cp "$PHP_INI_DEV" "$PHP_INI"
-    fi
-  fi
-  
-  # Jika php.ini masih tidak ada, coba buat dari scratch
-  if [ ! -f "$PHP_INI" ]; then
-    echo "⚠️ php.ini tidak ditemukan di $PHP_INI"
-    echo "   Mencoba lokasi alternatif..."
-    
-    # Coba cari php.ini yang aktif
-    PHP_INI_ACTIVE=$(php --ini 2>/dev/null | grep "Loaded Configuration File" | awk '{print $4}' || echo "")
-    if [ -n "$PHP_INI_ACTIVE" ] && [ -f "$PHP_INI_ACTIVE" ]; then
-      PHP_INI="$PHP_INI_ACTIVE"
-      echo "✅ Menggunakan php.ini aktif: $PHP_INI"
-    else
-      echo "❌ Tidak dapat menemukan php.ini. Silakan konfigurasi manual."
-      return 1
-    fi
-  fi
-  
-  # Backup php.ini
-  if [ -f "$PHP_INI" ]; then
-    echo "💾 Membuat backup php.ini..."
-    if [ "$platform" = "vps" ]; then
-      sudo cp "$PHP_INI" "${PHP_INI}.backup.$(date +%Y%m%d_%H%M%S)"
-    elif [ "$platform" = "alpine" ]; then
-      doas cp "$PHP_INI" "${PHP_INI}.backup.$(date +%Y%m%d_%H%M%S)"
-    else
-      cp "$PHP_INI" "${PHP_INI}.backup.$(date +%Y%m%d_%H%M%S)"
-    fi
-  fi
-  
-  # Update konfigurasi PHP
-  if [ -f "$PHP_INI" ]; then
-    echo "🔧 Mengatur PHP limits..."
-    
-    # Tentukan command untuk privilege escalation
-    PRIV_CMD=""
-    if [ "$platform" = "vps" ]; then
-      PRIV_CMD="sudo"
-    elif [ "$platform" = "alpine" ]; then
-      PRIV_CMD="doas"
-    fi
-    
-    # Fungsi untuk update atau add setting
-    update_php_setting() {
-      local setting=$1
-      local value=$2
-      local file=$3
-      local priv_cmd=$4
-      
-      # Cek apakah setting sudah ada
-      if grep -q "^[[:space:]]*$setting[[:space:]]*=" "$file" 2>/dev/null; then
-        # Update existing setting
-        if [ -n "$priv_cmd" ]; then
-          $priv_cmd sed -i "s|^[[:space:]]*$setting[[:space:]]*=.*|$setting = $value|" "$file"
-        else
-          sed -i "s|^[[:space:]]*$setting[[:space:]]*=.*|$setting = $value|" "$file"
-        fi
-      else
-        # Add new setting (tambahkan di akhir file)
-        if [ -n "$priv_cmd" ]; then
-          echo "$setting = $value" | $priv_cmd tee -a "$file" > /dev/null
-        else
-          echo "$setting = $value" >> "$file"
-        fi
-      fi
-    }
-    
-    # Update settings
-    update_php_setting "upload_max_filesize" "2G" "$PHP_INI" "$PRIV_CMD"
-    update_php_setting "post_max_size" "2G" "$PHP_INI" "$PRIV_CMD"
-    update_php_setting "memory_limit" "2G" "$PHP_INI" "$PRIV_CMD"
-    update_php_setting "max_execution_time" "300" "$PHP_INI" "$PRIV_CMD"
-    
-    echo "✅ PHP configuration updated!"
-    echo "   - upload_max_filesize = 2G"
-    echo "   - post_max_size = 2G"
-    echo "   - memory_limit = 2G"
-    echo "   - max_execution_time = 300"
-    return 0
-  else
-    echo "❌ Gagal mengonfigurasi PHP: php.ini tidak ditemukan"
-    return 1
-  fi
-}
-
 # Validasi source directory
 if [ ! -f "$SOURCE_DIR/index.php" ]; then
   echo "❌ Error: File index.php tidak ditemukan di $SOURCE_DIR"
@@ -212,9 +63,6 @@ if [ "$PLATFORM" = "termux" ]; then
   echo "📲 Instalasi untuk Termux..."
   pkg update -y && pkg upgrade -y
   pkg install -y php curl ffmpeg
-
-  # Konfigurasi PHP
-  configure_php "termux"
 
   INSTALL_DIR="$HOME/$APP_DIR"
   echo "📋 Menyalin file ke $INSTALL_DIR..."
@@ -253,9 +101,6 @@ if [ "$PLATFORM" = "alpine" ]; then
 
   PHP_BIN=$(command -v php || command -v php83)
 
-  # Konfigurasi PHP
-  configure_php "alpine"
-
   INSTALL_DIR="$HOME/$APP_DIR"
   echo "📋 Menyalin file ke $INSTALL_DIR..."
   
@@ -292,9 +137,6 @@ if [ "$PLATFORM" = "vps" ]; then
 
   sudo apt update
   sudo apt install -y php curl ffmpeg ufw
-
-  # Konfigurasi PHP
-  configure_php "vps"
 
   INSTALL_DIR="/opt/$APP_DIR"
   echo "📋 Menyalin file ke $INSTALL_DIR..."
