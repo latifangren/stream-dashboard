@@ -90,6 +90,7 @@ for ($i = 1; $i <= 2; $i++) {
         <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#upload">Upload</a></li>
         <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#gallery">Galeri</a></li>
         <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#schedule">Jadwal</a></li>
+        <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#system">System</a></li>
       </ul>
 
       <div class="tab-content">
@@ -372,6 +373,116 @@ for ($i = 1; $i <= 2; $i++) {
         <?php endif; ?>
       </ul>
     </div>
+
+    <!-- System Tab -->
+    <div class="tab-pane fade" id="system">
+      <div class="card card-schedule p-4">
+        <h5 class="mb-3">⚙️ System & Cron Status</h5>
+        
+        <div id="cronStatusLoading" class="text-center py-4">
+          <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Loading...</span>
+          </div>
+          <p class="mt-2" style="color: #f4f7ff;">Memuat informasi sistem...</p>
+        </div>
+
+        <div id="cronStatusContent" style="display: none;">
+          <!-- Status Info -->
+          <div class="row g-3 mb-4">
+            <div class="col-md-6">
+              <div class="card p-3" style="background: rgba(12, 18, 38, 0.85); border: 1px solid rgba(255, 255, 255, 0.08); color: #f4f7ff;">
+                <h6 class="mb-2" style="color: #f4f7ff;">📋 Cron Job Status</h6>
+                <div id="cronInstalledStatus">
+                  <span class="badge bg-secondary">Checking...</span>
+                </div>
+                <div id="cronLines" class="mt-2 small" style="color: #92a1c6;"></div>
+                <div id="cronActiveStatus" class="mt-2 small" style="color: #92a1c6;"></div>
+                <div id="cronSetupButton" class="mt-2" style="display: none;">
+                  <button class="btn btn-sm btn-primary" onclick="setupCron()" style="background: rgba(46, 49, 146, 0.8); border-color: rgba(46, 49, 146, 0.5); color: #f4f7ff;">⚙️ Setup Cron Otomatis</button>
+                </div>
+                <div id="cronActions" class="mt-2" style="display: none;">
+                  <button class="btn btn-sm btn-outline-info" onclick="viewCronDetails()" style="border-color: rgba(46, 49, 146, 0.5); color: #f4f7ff;">📋 Lihat Detail Cron</button>
+                  <button class="btn btn-sm btn-outline-warning" onclick="repairCron()" style="border-color: rgba(255, 193, 7, 0.5); color: #f4f7ff; margin-left: 5px;">🔧 Update/Repair Cron</button>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="card p-3" style="background: rgba(12, 18, 38, 0.85); border: 1px solid rgba(255, 255, 255, 0.08); color: #f4f7ff;">
+                <h6 class="mb-2" style="color: #f4f7ff;">📄 Log File Status</h6>
+                <div id="logFileStatus">
+                  <span class="badge bg-secondary">Checking...</span>
+                </div>
+                <div id="logFileInfo" class="mt-2 small" style="color: #92a1c6;"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Daemon Status (Alternatif untuk Cron) -->
+          <div class="row g-3 mb-4">
+            <div class="col-md-12">
+              <div class="card p-3" style="background: rgba(12, 18, 38, 0.85); border: 1px solid rgba(255, 255, 255, 0.08); color: #f4f7ff;">
+                <h6 class="mb-2" style="color: #f4f7ff;">🔄 Schedule Daemon (Alternatif untuk Cron)</h6>
+                <div id="daemonStatus">
+                  <span class="badge bg-secondary">Checking...</span>
+                </div>
+                <div id="daemonInfo" class="mt-2 small" style="color: #92a1c6;"></div>
+                <div id="daemonActions" class="mt-2" style="display: none;">
+                  <button class="btn btn-sm btn-success" onclick="startDaemon()" style="background: rgba(40, 167, 69, 0.8); border-color: rgba(40, 167, 69, 0.5); color: #f4f7ff;">▶️ Start Daemon</button>
+                  <button class="btn btn-sm btn-danger" onclick="stopDaemon()" style="background: rgba(220, 53, 69, 0.8); border-color: rgba(220, 53, 69, 0.5); color: #f4f7ff; margin-left: 5px;">⏹️ Stop Daemon</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- System Info -->
+          <div class="row g-3 mb-4">
+            <div class="col-md-4">
+              <div class="card p-3" style="background: rgba(12, 18, 38, 0.85); border: 1px solid rgba(255, 255, 255, 0.08); color: #f4f7ff;">
+                <h6 class="mb-2" style="color: #f4f7ff;">🐘 PHP Info</h6>
+                <div class="small" style="color: #f4f7ff;">
+                  <div><strong style="color: #f4f7ff;">Version:</strong> <span id="phpVersion" style="color: #92a1c6;">-</span></div>
+                  <div><strong style="color: #f4f7ff;">Path:</strong> <span id="phpPath" class="text-truncate d-inline-block" style="max-width: 200px; color: #92a1c6;">-</span></div>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div class="card p-3" style="background: rgba(12, 18, 38, 0.85); border: 1px solid rgba(255, 255, 255, 0.08); color: #f4f7ff;">
+                <h6 class="mb-2" style="color: #f4f7ff;">👤 User Info</h6>
+                <div class="small" style="color: #f4f7ff;">
+                  <div><strong style="color: #f4f7ff;">User:</strong> <span id="currentUser" style="color: #92a1c6;">-</span></div>
+                  <div><strong style="color: #f4f7ff;">Timezone:</strong> <span id="timezone" style="color: #92a1c6;">-</span></div>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div class="card p-3" style="background: rgba(12, 18, 38, 0.85); border: 1px solid rgba(255, 255, 255, 0.08); color: #f4f7ff;">
+                <h6 class="mb-2" style="color: #f4f7ff;">⏰ Last Run</h6>
+                <div class="small" style="color: #f4f7ff;">
+                  <div id="lastRun" style="color: #92a1c6;">-</div>
+                  <div class="mt-1" id="lastRunAgo" style="color: #92a1c6;"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Log Preview -->
+          <div class="card p-3" style="background: rgba(12, 18, 38, 0.85); border: 1px solid rgba(255, 255, 255, 0.08);">
+            <h6 class="mb-3" style="color: #f4f7ff;">📋 Log Terakhir (20 baris)</h6>
+            <div id="logPreview" class="font-monospace small" style="max-height: 400px; overflow-y: auto; white-space: pre-wrap; background: #0a0e1a; padding: 10px; border-radius: 5px; color: #92a1c6; border: 1px solid rgba(255, 255, 255, 0.05);">
+              <div style="color: #92a1c6;">Memuat log...</div>
+            </div>
+            <div class="mt-2">
+              <button class="btn btn-sm btn-outline-primary" onclick="refreshCronStatus()" style="border-color: rgba(46, 49, 146, 0.5); color: #f4f7ff;">🔄 Refresh</button>
+              <button class="btn btn-sm btn-outline-primary" onclick="testRunSchedule()" style="border-color: rgba(46, 49, 146, 0.5); color: #f4f7ff;">🧪 Test Run</button>
+            </div>
+          </div>
+        </div>
+
+        <div id="cronStatusError" style="display: none; background: rgba(220, 53, 69, 0.2); border-color: rgba(220, 53, 69, 0.5); color: #f4f7ff;" class="alert alert-danger">
+          <strong style="color: #f4f7ff;">Error:</strong> <span id="errorMessage" style="color: #f4f7ff;"></span>
+        </div>
+      </div>
+    </div>
   </div>
 </div>
 </div>
@@ -424,6 +535,313 @@ togglePreset('encoder_type_<?= $slotAvailable ?>', 'preset_container_<?= $slotAv
 
 // Inisialisasi untuk form schedule
 togglePreset('encoder_type_sched', 'preset_container_sched');
+
+// Cron Status Functions
+function loadCronStatus() {
+  fetch('cron_status.php')
+    .then(res => res.json())
+    .then(data => {
+      if (data.success) {
+        document.getElementById('cronStatusLoading').style.display = 'none';
+        document.getElementById('cronStatusContent').style.display = 'block';
+        document.getElementById('cronStatusError').style.display = 'none';
+        
+        // Update cron status
+        const cronInstalled = data.data.cron_installed;
+        const cronStatusEl = document.getElementById('cronInstalledStatus');
+        const cronActiveEl = document.getElementById('cronActiveStatus');
+        
+        if (cronInstalled) {
+          cronStatusEl.innerHTML = '<span class="badge bg-success">✅ Terpasang</span>';
+          document.getElementById('cronSetupButton').style.display = 'none';
+          document.getElementById('cronActions').style.display = 'block';
+          
+          const cronLinesEl = document.getElementById('cronLines');
+          if (data.data.cron_lines.length > 0) {
+            cronLinesEl.innerHTML = '<strong style="color: #f4f7ff;">Cron job:</strong><br><code class="small" style="color: #92a1c6; background: rgba(0,0,0,0.3); padding: 2px 6px; border-radius: 3px;">' + 
+              data.data.cron_lines.map(line => htmlspecialchars(line)).join('<br>') + '</code>';
+          }
+          
+          // Cek apakah cron aktif (berdasarkan last run)
+          const lastRun = data.data.last_run;
+          if (lastRun) {
+            const lastRunTime = new Date(lastRun.replace(' ', 'T'));
+            const now = new Date();
+            const diffMs = now - lastRunTime;
+            const diffMins = Math.floor(diffMs / 60000);
+            
+            if (diffMins <= 2) {
+              cronActiveEl.innerHTML = '<span class="badge bg-success">🟢 Aktif</span> <small style="color: #92a1c6;">(Terakhir: ' + lastRun + ')</small>';
+            } else if (diffMins <= 5) {
+              cronActiveEl.innerHTML = '<span class="badge bg-warning">🟡 Mungkin tidak aktif</span> <small style="color: #ff6b6b;">(Terakhir: ' + lastRun + ', ' + diffMins + ' menit lalu)</small>';
+            } else {
+              cronActiveEl.innerHTML = '<span class="badge bg-danger">🔴 Tidak aktif</span> <small style="color: #ff6b6b;">(Terakhir: ' + lastRun + ', ' + diffMins + ' menit lalu)</small>';
+            }
+          } else {
+            cronActiveEl.innerHTML = '<span class="badge bg-secondary">⚪ Belum pernah dijalankan</span> <small style="color: #92a1c6;">(Tunggu beberapa menit atau klik Test Run)</small>';
+          }
+        } else {
+          cronStatusEl.innerHTML = '<span class="badge bg-warning">⚠️ Tidak Terpasang</span>';
+          document.getElementById('cronLines').innerHTML = 
+            '<small style="color: #ff6b6b;">Cron job tidak ditemukan. Klik tombol di bawah untuk setup otomatis.</small>';
+          document.getElementById('cronSetupButton').style.display = 'block';
+          document.getElementById('cronActions').style.display = 'none';
+          cronActiveEl.innerHTML = '';
+        }
+        
+        // Update log file status
+        const logExists = data.data.log_exists;
+        const logStatusEl = document.getElementById('logFileStatus');
+        if (logExists) {
+          logStatusEl.innerHTML = '<span class="badge bg-success">✅ Ada</span>';
+          document.getElementById('logFileInfo').innerHTML = 
+            '<strong style="color: #f4f7ff;">Ukuran:</strong> <span style="color: #92a1c6;">' + data.data.log_size_kb + ' KB</span><br>' +
+            '<strong style="color: #f4f7ff;">Path:</strong> <code class="small" style="color: #92a1c6; background: rgba(0,0,0,0.3); padding: 2px 6px; border-radius: 3px;">' + htmlspecialchars(data.data.log_path) + '</code>';
+        } else {
+          logStatusEl.innerHTML = '<span class="badge bg-secondary">❌ Tidak Ada</span>';
+          document.getElementById('logFileInfo').innerHTML = 
+            '<small style="color: #92a1c6;">Log file akan dibuat saat run_schedule.php pertama kali dijalankan</small>';
+        }
+        
+        // Update system info
+        document.getElementById('phpVersion').textContent = data.data.php_version;
+        document.getElementById('phpPath').textContent = data.data.php_path;
+        document.getElementById('currentUser').textContent = data.data.current_user;
+        document.getElementById('timezone').textContent = data.data.timezone;
+        
+        // Update last run
+        const lastRun = data.data.last_run;
+        if (lastRun) {
+          document.getElementById('lastRun').textContent = lastRun;
+          const lastRunTime = new Date(lastRun.replace(' ', 'T'));
+          const now = new Date();
+          const diffMs = now - lastRunTime;
+          const diffMins = Math.floor(diffMs / 60000);
+          const diffSecs = Math.floor((diffMs % 60000) / 1000);
+          
+          let agoText = '';
+          if (diffMins > 0) {
+            agoText = diffMins + ' menit yang lalu';
+          } else {
+            agoText = diffSecs + ' detik yang lalu';
+          }
+          document.getElementById('lastRunAgo').textContent = agoText;
+        } else {
+          document.getElementById('lastRun').textContent = 'Belum pernah dijalankan';
+          document.getElementById('lastRunAgo').textContent = '';
+        }
+        
+        // Update log preview
+        const logPreviewEl = document.getElementById('logPreview');
+        if (data.data.log_last_lines && data.data.log_last_lines.length > 0) {
+          logPreviewEl.textContent = data.data.log_last_lines.join('\n');
+          logPreviewEl.style.color = '#92a1c6';
+        } else {
+          logPreviewEl.innerHTML = '<div style="color: #92a1c6;">Log masih kosong</div>';
+        }
+        
+        // Update daemon status
+        const daemonStatusEl = document.getElementById('daemonStatus');
+        const daemonInfoEl = document.getElementById('daemonInfo');
+        const daemonActionsEl = document.getElementById('daemonActions');
+        
+        if (data.data.daemon_available) {
+          if (data.data.daemon_running) {
+            daemonStatusEl.innerHTML = '<span class="badge bg-success">🟢 Berjalan</span>';
+            daemonInfoEl.innerHTML = '<strong style="color: #f4f7ff;">PID:</strong> <span style="color: #92a1c6;">' + data.data.daemon_pid + '</span><br>' +
+              '<small style="color: #92a1c6;">Daemon berjalan di background dan akan mengeksekusi jadwal setiap menit</small>';
+            daemonActionsEl.style.display = 'block';
+            daemonActionsEl.querySelector('button[onclick="startDaemon()"]').style.display = 'none';
+            daemonActionsEl.querySelector('button[onclick="stopDaemon()"]').style.display = 'inline-block';
+          } else {
+            daemonStatusEl.innerHTML = '<span class="badge bg-danger">🔴 Tidak Berjalan</span>';
+            daemonInfoEl.innerHTML = '<small style="color: #ff6b6b;">Daemon tidak berjalan. Klik tombol Start untuk menjalankan daemon sebagai alternatif cron.</small>';
+            daemonActionsEl.style.display = 'block';
+            daemonActionsEl.querySelector('button[onclick="startDaemon()"]').style.display = 'inline-block';
+            daemonActionsEl.querySelector('button[onclick="stopDaemon()"]').style.display = 'none';
+          }
+        } else {
+          daemonStatusEl.innerHTML = '<span class="badge bg-secondary">❌ Tidak Tersedia</span>';
+          daemonInfoEl.innerHTML = '<small style="color: #92a1c6;">Schedule daemon tidak tersedia</small>';
+          daemonActionsEl.style.display = 'none';
+        }
+      } else {
+        throw new Error('Failed to load cron status');
+      }
+    })
+    .catch(err => {
+      document.getElementById('cronStatusLoading').style.display = 'none';
+      document.getElementById('cronStatusContent').style.display = 'none';
+      document.getElementById('cronStatusError').style.display = 'block';
+      document.getElementById('errorMessage').textContent = err.message;
+    });
+}
+
+function refreshCronStatus() {
+  document.getElementById('cronStatusLoading').style.display = 'block';
+  document.getElementById('cronStatusContent').style.display = 'none';
+  loadCronStatus();
+}
+
+function testRunSchedule() {
+  if (confirm('Jalankan test run_schedule.php? Ini akan mengeksekusi jadwal yang sesuai waktu sekarang.')) {
+    // Buat request ke test_run_schedule.php
+    fetch('test_run_schedule.php')
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          alert('✅ Test run selesai! Cek log untuk detail.');
+        } else {
+          alert('⚠️ Test run selesai dengan warning. Return code: ' + data.return_code);
+        }
+        setTimeout(refreshCronStatus, 1000);
+      })
+      .catch(err => {
+        alert('❌ Error: ' + err.message);
+      });
+  }
+}
+
+function setupCron() {
+  if (confirm('Setup cron job otomatis? Ini akan menambahkan cron job ke crontab untuk menjalankan run_schedule.php setiap menit.')) {
+    fetch('setup_cron.php')
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          alert('✅ ' + data.message);
+          setTimeout(refreshCronStatus, 1000);
+        } else {
+          alert('❌ ' + (data.error || data.message || 'Gagal setup cron job'));
+        }
+      })
+      .catch(err => {
+        alert('❌ Error: ' + err.message);
+      });
+  }
+}
+
+function viewCronDetails() {
+  fetch('cron_status.php')
+    .then(res => res.json())
+    .then(data => {
+      if (data.success) {
+        let details = '=== Detail Cron Job ===\n\n';
+        details += 'Status: ' + (data.data.cron_installed ? '✅ Terpasang' : '❌ Tidak Terpasang') + '\n';
+        details += 'PHP Path: ' + data.data.php_path + '\n';
+        details += 'PHP Version: ' + data.data.php_version + '\n';
+        details += 'User: ' + data.data.current_user + '\n';
+        details += 'Timezone: ' + data.data.timezone + '\n';
+        details += 'Waktu Sekarang: ' + data.data.current_time + '\n\n';
+        
+        if (data.data.cron_lines.length > 0) {
+          details += 'Cron Job:\n';
+          data.data.cron_lines.forEach(line => {
+            details += '  ' + line + '\n';
+          });
+          details += '\n';
+        }
+        
+        if (data.data.last_run) {
+          details += 'Terakhir Dijalankan: ' + data.data.last_run + '\n';
+        } else {
+          details += 'Terakhir Dijalankan: Belum pernah\n';
+        }
+        
+        if (data.data.log_exists) {
+          details += 'Log File: ' + data.data.log_path + '\n';
+          details += 'Ukuran Log: ' + data.data.log_size_kb + ' KB\n';
+        }
+        
+        alert(details);
+      }
+    })
+    .catch(err => {
+      alert('❌ Error: ' + err.message);
+    });
+}
+
+function repairCron() {
+  if (confirm('Update/Repair cron job? Ini akan memperbaiki cron job dengan menggunakan absolute path yang benar. Cron job lama akan diganti.')) {
+    fetch('setup_cron.php')
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          alert('✅ ' + data.message + '\n\nPHP Path: ' + (data.php_path || 'N/A') + '\nScript Dir: ' + (data.script_dir || 'N/A'));
+          setTimeout(refreshCronStatus, 1000);
+        } else {
+          alert('❌ ' + (data.error || data.message || 'Gagal update cron job'));
+        }
+      })
+      .catch(err => {
+        alert('❌ Error: ' + err.message);
+      });
+  }
+}
+
+function startDaemon() {
+  if (confirm('Jalankan Schedule Daemon? Ini akan menjalankan daemon di background yang akan mengeksekusi jadwal setiap menit (alternatif untuk cron).')) {
+    fetch('daemon_control.php?action=start')
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          alert('✅ ' + data.message + (data.pid ? '\n\nPID: ' + data.pid : ''));
+          setTimeout(refreshCronStatus, 1000);
+        } else {
+          alert('❌ ' + (data.message || 'Gagal menjalankan daemon'));
+        }
+      })
+      .catch(err => {
+        alert('❌ Error: ' + err.message);
+      });
+  }
+}
+
+function stopDaemon() {
+  if (confirm('Hentikan Schedule Daemon?')) {
+    fetch('daemon_control.php?action=stop')
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          alert('✅ ' + data.message);
+          setTimeout(refreshCronStatus, 1000);
+        } else {
+          alert('❌ ' + (data.message || 'Gagal menghentikan daemon'));
+        }
+      })
+      .catch(err => {
+        alert('❌ Error: ' + err.message);
+      });
+  }
+}
+
+function htmlspecialchars(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+// Load cron status saat tab System dibuka
+document.addEventListener('DOMContentLoaded', function() {
+  // Load saat tab System diklik (Bootstrap 5)
+  const systemTab = document.querySelector('a[href="#system"]');
+  if (systemTab) {
+    systemTab.addEventListener('shown.bs.tab', function() {
+      loadCronStatus();
+    });
+    // Juga load jika tab sudah aktif saat page load
+    if (systemTab.classList.contains('active')) {
+      loadCronStatus();
+    }
+  }
+  
+  // Auto refresh setiap 30 detik jika tab System aktif
+  setInterval(function() {
+    const systemTabPane = document.getElementById('system');
+    if (systemTabPane && systemTabPane.classList.contains('active') && systemTabPane.classList.contains('show')) {
+      loadCronStatus();
+    }
+  }, 30000);
+});
 </script>
 <script>
 document.getElementById('uploadForm').addEventListener('submit', function (e) {
