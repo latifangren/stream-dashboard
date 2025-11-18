@@ -41,11 +41,12 @@ nano /data/data/com.termux/files/usr/etc/php/php.ini
 letak config php.ini kadang berbeda silahkan cari sendiri/tanya ai
 Ubah atau tambahkan baris ini:
 
+```bash
 upload_max_filesize = 2G
 post_max_size = 2G
 memory_limit = 1G
 max_execution_time = 300
-
+```
 
 Cek ulang limit:
 ```bash
